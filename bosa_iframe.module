@@ -32,8 +32,7 @@ function bosa_iframe_page_alter(&$page) {
  * Implements hook_preprocess_page()
  */
 function bosa_iframe_preprocess_page(&$vars, $hook) {
-  $pathargs = explode('/',request_uri());
-  if ($pathargs[2] == 'bosa' && $pathargs[3] == 'iframe') {
+  if (strstr(request_uri(), 'bosa/iframe')) {
      $vars['theme_hook_suggestion'] = 'page__iframe';
   }
 }
@@ -58,16 +57,15 @@ function bosa_iframe_view($type, $arg, $ids = NULL){
     // Category view
     // bosa/iframe/category/<number of categories>/<category ids>
     case 'category':
-      $v = views_get_view('kategorivisning');
-      switch($arg){
-        case 's':
-          return $v->preview('panel_pane_1', array($ids));
-        
-        default:
-          $v->set_items_per_page($ids);
-          return $v->preview('panel_pane_1');
+      $views = '';
+      $ids = explode(',', $ids);
+      error_log(print_r($ids, 1));
+      foreach($ids as $id){
+        $v = views_get_view('kategorivisning');
+        $views .=  $v->preview('panel_pane_1', array($id));
       }
-      break;
+      return $views;
+        
 
     default:
       return 'Incorrect arguments';
