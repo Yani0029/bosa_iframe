@@ -1,0 +1,9 @@
+name = BOSA Iframe
+description = Iframes for page integration
+core = 7.x
+; Examples - use at will
+;package = Views
+;dependencies[] = views
+;dependencies[] = panels
+;files[] = example.test
+;configure = admin/config/content/example
