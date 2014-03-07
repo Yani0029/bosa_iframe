@@ -11,7 +11,7 @@ function bosa_iframe_menu(){
 
   $items['bosa/iframe'] = array(
     'page callback' => 'bosa_iframe_view',
-    'access arguments' => array('view published content'),
+    'access arguments' => array('access content'), 
   );
 
   return $items;
@@ -37,8 +37,18 @@ function bosa_iframe_preprocess_page(&$vars, $hook) {
   }
 }
 
-function bosa_iframe_view($type, $arg, $ids = NULL){
+function bosa_iframe_view($type, $arg, $ids = NULL, $tid = NULL){
+$script = "
+  var qty = jQuery('.views-row').length;
+  var width = 100;
+  if(qty !== 4){
+  	if(qty !== 1){
+      width = 98;
+  	}
+    jQuery('.views-row').css('width', width+'%');
+  }";
 
+  drupal_add_js($script, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
   switch($type){
     // Product view
     // bosa/iframe/product/<s:specified/r:random>/<optional: product node ids>
@@ -50,7 +60,7 @@ function bosa_iframe_view($type, $arg, $ids = NULL){
         
         default:
           $v->set_items_per_page($ids);
-          return $v->preview('panel_pane_2');
+          return $v->preview('panel_pane_2', array('all', $tid));
       }
       break;
 
@@ -59,10 +69,11 @@ function bosa_iframe_view($type, $arg, $ids = NULL){
     case 'category':
       $views = '';
       $ids = explode(',', $ids);
-      error_log(print_r($ids, 1));
+      $i = 0;
       foreach($ids as $id){
         $v = views_get_view('kategorivisning');
-        $views .=  $v->preview('panel_pane_1', array($id));
+        $views .=  '<div class="row-' . $i . '">' . $v->preview('panel_pane_1', array($id)) . '</div>';
+        $i++;
       }
       return $views;
         
