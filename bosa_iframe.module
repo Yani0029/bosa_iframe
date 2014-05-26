@@ -44,13 +44,13 @@ function bosa_iframe_form($form, &$form_state){
     '#type' => 'radios',
     '#title' => t('Size'),
     '#options' => $size,
-    '#default_value' => isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 1,
-    //'#description' => t('Check or uncheck the respective fields'),
+    '#default_value' => isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 2,
   );
   $form['bosa_iframe_form']['bosa_iframe_amount'] = array(
     '#type' => 'textfield',
     '#title' => "Antal",
-    '#default_value' => isset($values['bosa_iframe_amount']) ? $values['bosa_iframe_amount'] : '',
+    '#default_value' => isset($values['bosa_iframe_amount']) ? $values['bosa_iframe_amount'] : '4',
+    '#description' => t('Standart er 4'),
   );
   $form['bosa_iframe_form']['bosa_iframe_random'] = array(
     '#type' => 'checkbox',
@@ -115,27 +115,39 @@ function bosa_iframe_form($form, &$form_state){
     $random = isset($values['bosa_iframe_random']) ? $values['bosa_iframe_random'] : '';
     //TODO size & random
 
+    if ($random) {
+      $type = 'product/r';
+      $category = 'category_new/r';
+    }
+    else {
+      $type = 'product/latest';
+      $category = 'category_new/latest';
+    }
     global $base_url;
     // default.
-    if(!$ca_geo && !$ca_tower && !$ca_sal && !$ids) {
-      $html = '<iframe src="'.$base_url.'/bosa/iframe/product/r/'.$amount.'" width="100%" height="500"></iframe>';
+    if(!is_numeric($ca_geo) && !is_numeric($ca_tower) && !is_numeric($ca_sal) && !$ids) {
+      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $type .'/size'.$size . '/'.$amount.'" width="100%" height="500"></iframe>';
     }
-    elseif (!$ids) {
-      if (!$ca_geo) {
-        $html = '<iframe src="'.$base_url.'/bosa/iframe/product/r/'.$amount.'" width="100%" height="500"></iframe>';
-      }
-      else {
-        $html = '<iframe src="'.$base_url.'/bosa/iframe/category_new/'.$amount.'/'.$ca_geo.'/'.$ca_tower.'/'.$ca_sal;
-        $html .= '" width="100%" height="500"></iframe>';
-      }
+    elseif (!$ids && (is_numeric($ca_geo) || is_numeric($ca_tower) || is_numeric($ca_sal))) {
+      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $category .'/size'.$size . '/'.$amount.'/'.$ca_geo.'/'.$ca_tower.'/'.$ca_sal;
+      $html .= '" width="100%" height="500"></iframe>';
     }
 
     // overwrite other value.
     if ($ids != '') {
-      $html='<iframe src="'.$base_url.'/bosa/iframe/product/s/'.$ids.'" width="100%" height="500"></iframe>';
+      // Amount should be overwrite the ids display, if there are more ids than amount in field bosa_iframe_amount
+      $tmp = explode(',',$ids);
+      // Check ids, if unpublished, choose next ones.
+      if ($tmp_ids = bosa_iframe_check_expirated_date($tmp,$amount)) {
+        $ids = implode($tmp_ids,",");
+        $html='<iframe src="'.$base_url.'/bosa/iframe/product/s/size'.$size . '/' .$ids.'" width="100%" height="500"></iframe>';
+      }
+      else {
+        $html = t("Ingen resultat, de er udloebet eller ingen produkter i produktervisning.");
+      }
     }
     $form['bosa_iframe_form']['bosa_iframe_code'] = array(
-      '#title' => "iframe code",
+      '#title' => t("Iframe kode"),
       '#type' => 'textarea',
       '#value' => $html,
     );
@@ -164,6 +176,51 @@ function bosa_iframe_form_all_submit($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
 }
 /**
+ * function bosa_iframe_check_expirated_date()
+ * Check the offers expirated date.
+ */
+function bosa_iframe_check_expirated_date($tmp,$amount = 4) {
+  $ids = array();
+  foreach ($tmp as $key => $value) {
+    $node = node_load($value);
+    if ($node->status == 0) {
+      continue;
+    }
+    if (!$product = field_get_items('node', $node, 'field_reference')) {
+      continue;
+    }
+    if($expirated = field_get_items('node', $node, 'field_udl_bsdato')) {
+      if ($expirated[0] < time()) {
+        continue;
+      }
+      else {
+        $ids[] = $value;
+      }
+    }
+    else {
+      $ids[] = $value;
+    }
+  }
+  if(count($ids) >= $amount) {
+    return $ids = array_slice($ids,0,$amount);
+  }
+  elseif (count($ids) > 0 && ($short = $amount - count($ids)) > 0) {
+    // Add the extra ids.
+    $sql = "SELECT * FROM `node`, `field_data_field_udl_bsdato` udl, `field_data_field_reference` ref
+            WHERE node.type = 'offer' AND nid = udl.entity_id AND field_udl_bsdato_value >now()
+            AND status = 1 and ref.entity_id = nid
+            ORDER BY created DESC LIMIT " . $short;
+    $items = db_query($sql)->fetchAll();
+    foreach ($items as $item) {
+      $ids[] = $item->nid;
+    }
+    return $ids;
+  }
+  elseif (count($ids) == 0) {
+    return FALSE;
+  }
+}
+/**
  * Implements hook_page_alter()
  */
 function bosa_iframe_page_alter(&$page) {
@@ -179,12 +236,18 @@ function bosa_iframe_page_alter(&$page) {
  */
 function bosa_iframe_preprocess_page(&$vars, $hook) {
   if (strstr(request_uri(), 'bosa/iframe')) {
-     $vars['theme_hook_suggestion'] = 'page__iframe';
+    $vars['theme_hook_suggestion'] = 'page__iframe';
   }
 }
 
-function bosa_iframe_view($type, $arg, $ids = NULL, $tid_2 = NULL,$tid_3 = NULL){
-$script = "
+/**
+ * base_iframe_view('product','r','size1', ids = '4'(amount))
+ * base_iframe_view('product','s','size1', ids = '230,298')
+ * base_iframe_view('category_new','latest','size1', ids = '230', $tid_2. $tid_3)
+ * size1 (572x470), size2 (279x228)
+ */
+function bosa_iframe_view($type, $arg, $size, $amount,$ids = NULL, $tid_2 = NULL,$tid_3 = NULL){
+/*$script = "
   var qty = jQuery('.views-row').length;
   var width = 100;
   if(qty >= 4 ){
@@ -200,8 +263,22 @@ $script = "
     width = 98;
   }
   jQuery('.views-row').css('width', width+'%');
+  ";*/
+  $script = "";
+  if($size == 'size1') {
+    $width = '572px';
+    $height = '470px';
+  }else {
+    $width = '279px';
+    $height = '228px';
+    $script = "jQuery('.views-field.views-field-field-subtitle').css({'display': 'none', 'visibility' : 'hidden'});";
+  }
+  $script .= "
+  var width = '". $width ."';
+  var height = '". $height ."';
+  jQuery('.views-row').css({'width': width, 'height' : height});
+  jQuery('.views-field-field-offer-images img').css({'width': '100%', 'height' : 'auto'});
   ";
-
   drupal_add_js($script, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
   switch($type){
     // Product view
@@ -210,10 +287,15 @@ $script = "
       $v = views_get_view('Produktvisning_paa_kategoriside');
       switch($arg){
         case 's':
-          return $v->preview('panel_pane_2', array($ids));
-        
+          return $v->preview('panel_pane_2', array($amount));
+        case 'r':
+          $v->set_items_per_page($amount);
+          return $v->preview('panel_pane_2', array('all', $tid_2));
+        case 'latest':
+          $v->set_items_per_page($amount);
+          return $v->preview('panel_pane_3', array('all', $tid_2));
         default:
-          $v->set_items_per_page($ids);
+          $v->set_items_per_page($amount);
           return $v->preview('panel_pane_2', array('all', $tid_2));
       }
       break;
@@ -234,8 +316,21 @@ $script = "
 
     case 'category_new':
         $v = views_get_view('Produktvisning_paa_kategoriside');
-        $v->set_items_per_page($arg);
-        return $v->preview('panel_pane_4', array($ids,$tid_2,$tid_3));
+        $v->set_items_per_page($amount);
+        switch($arg){
+          case "r":
+            $v->set_items_per_page($amount);
+            return $v->preview('panel_pane_4', array($ids,$tid_2,$tid_3));
+            break;
+          case "latest":
+            $v->set_items_per_page($amount);
+            return $v->preview('panel_pane_5', array($ids,$tid_2,$tid_3));
+            break;
+
+          default:
+            return $v->preview('panel_pane_4', array($ids,$tid_2,$tid_3));
+            break;
+        }
         break;
     default:
       return 'Incorrect arguments';
