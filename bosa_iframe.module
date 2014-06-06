@@ -18,7 +18,7 @@ function bosa_iframe_menu(){
     'title' => 'BOSA Iframe Builder',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('bosa_iframe_form_all'),
-    'access arguments' => array('access content'),
+    'access callback' => array('user_is_logged_in'),
   );
   return $items;
 }
@@ -102,13 +102,14 @@ function bosa_iframe_form($form, &$form_state){
   );
   $form['bosa_iframe_form']['bosa_iframe_ids'] = array(
     '#type' => 'textfield',
-    '#title' => "Angiv Produktnummer/re ",
-    //'#description' =>"Du finder produktes nr. ved at klikke p&aring; <a href = ''>her</a>",
+    '#title' => "Angiv Produktvisninsnummer ",
+    '#description' =>"F.eks (23,44,24). Du finder produktes nr. ved at at holde musen over 'Rediger' linket på din visning, nummeret er det der står efter /node/",
     '#default_value' => isset($values['bosa_iframe_ids']) ? $values['bosa_iframe_ids'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Generer!'),
+    '#suffix' => '<div class="description">Kopiér nedenstående kode og indsæt den på din egen hjemmeside.</div>',
   );
   if($form_state['complete']) {
     $amount = $values['bosa_iframe_amount'] ? $values['bosa_iframe_amount']  : 4;
