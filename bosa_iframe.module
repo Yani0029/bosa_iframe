@@ -14,7 +14,7 @@ function bosa_iframe_menu(){
     'access arguments' => array('access content'), 
   );
 
-  $items['admin/bosa/bosa_iframe'] = array(
+  $items['iframe_builder'] = array(
     'title' => 'BOSA Iframe Builder',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('bosa_iframe_form_all'),
@@ -44,13 +44,16 @@ function bosa_iframe_form($form, &$form_state){
     '#type' => 'radios',
     '#title' => t('Size'),
     '#options' => $size,
-    '#default_value' => isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 2,
+    '#required' => TRUE,
+    //'#default_value' => isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 2,
   );
   $form['bosa_iframe_form']['bosa_iframe_amount'] = array(
     '#type' => 'textfield',
-    '#title' => "Antal",
+    '#title' => "Antal viste produkter",
+    '#size' => 4,
+    '#required' => TRUE,
     '#default_value' => isset($values['bosa_iframe_amount']) ? $values['bosa_iframe_amount'] : '4',
-    '#description' => t('Standart er 4'),
+    '#description' => t('Standard er 4'),
   );
   $form['bosa_iframe_form']['bosa_iframe_random'] = array(
     '#type' => 'checkbox',
@@ -60,7 +63,7 @@ function bosa_iframe_form($form, &$form_state){
 
   $vocabulary = taxonomy_vocabulary_machine_name_load('geografi');
   $terms = taxonomy_get_tree($vocabulary->vid);
-  $geografi = array( 0 => '--');
+  $geografi = array();
   foreach($terms as $term) {
     $geografi[$term->tid] = $term->name;
   }
@@ -79,26 +82,28 @@ function bosa_iframe_form($form, &$form_state){
   }
   $form['bosa_iframe_form']['bosa_iframe_category_1'] = array(
     '#type' => 'select',
-    '#title' => 'Kategori (geografi)',
+    '#title' => 'V&#230;lg Kommune',
     '#options' => $geografi,
+    '#multiple' => TRUE,
+    '#size' => 10,
     '#default_value' => isset($values['bosa_iframe_category_1']) ? $values['bosa_iframe_category_1'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_category_2'] = array(
     '#type' => 'select',
-    '#title' => "Kategori (t&#229;rn)",
+    '#title' => "V&#230;lg Tema",
     '#options' => $offer_type,
     '#default_value' => isset($values['bosa_iframe_category_2']) ? $values['bosa_iframe_category_2'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_category_3'] = array(
     '#type' => 'select',
-    '#title' => 'Kategori (sal)',
+    '#title' => 'V&#230;lg M&aring;lgruppe',
     '#options' => $sal,
     '#default_value' => isset($values['bosa_iframe_category_3']) ? $values['bosa_iframe_category_3'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_ids'] = array(
     '#type' => 'textfield',
-    '#title' => "Visnings id'er ",
-    '#description' =>"f. eks. 238,193",
+    '#title' => "Angiv Produktnummer/re ",
+    '#description' =>"Du finder produktes nr. ved at klikke p&aring; <a href = ''>her</a>",
     '#default_value' => isset($values['bosa_iframe_ids']) ? $values['bosa_iframe_ids'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_submit'] = array(
@@ -148,6 +153,7 @@ function bosa_iframe_form($form, &$form_state){
     }
     $form['bosa_iframe_form']['bosa_iframe_code'] = array(
       '#title' => t("Iframe kode"),
+      '#description' => 'Kopi&#233;r nedenst&aring;ende kode og inds&#230;t p&aring; din egen hjemmeside.',
       '#type' => 'textarea',
       '#value' => $html,
     );
