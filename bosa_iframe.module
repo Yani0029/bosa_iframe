@@ -103,7 +103,7 @@ function bosa_iframe_form($form, &$form_state){
   $form['bosa_iframe_form']['bosa_iframe_ids'] = array(
     '#type' => 'textfield',
     '#title' => "Angiv Produktnummer/re ",
-    '#description' =>"Du finder produktes nr. ved at klikke p&aring; <a href = ''>her</a>",
+    //'#description' =>"Du finder produktes nr. ved at klikke p&aring; <a href = ''>her</a>",
     '#default_value' => isset($values['bosa_iframe_ids']) ? $values['bosa_iframe_ids'] : NULL,
   );
   $form['bosa_iframe_form']['bosa_iframe_submit'] = array(
@@ -118,7 +118,6 @@ function bosa_iframe_form($form, &$form_state){
     $ids = $values['bosa_iframe_ids'] ? $values['bosa_iframe_ids'] : '';
     $size = isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 1;
     $random = isset($values['bosa_iframe_random']) ? $values['bosa_iframe_random'] : '';
-    //TODO size & random
 
     if ($random) {
       $type = 'product/r';
