@@ -14,9 +14,218 @@ function bosa_iframe_menu(){
     'access arguments' => array('access content'), 
   );
 
+  $items['iframe_builder'] = array(
+    'title' => 'BOSA Iframe Builder',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('bosa_iframe_form_all'),
+    'access callback' => array('user_is_logged_in'),
+  );
   return $items;
 }
+function bosa_iframe_form_all($form, &$form_state) {
+  if (!isset($form_state['stage']))
+    $form_state['stage'] = 'get_form';
 
+  switch ($form_state['stage']) {
+    default:
+      return bosa_iframe_form($form, $form_state);
+     break;
+  }
+  return $form;
+}
+function bosa_iframe_form($form, &$form_state){
+
+  $values = isset($form_state['multistep_values']['get_form']) ? $form_state['multistep_values']['get_form'] : array();
+  $size = array(
+    '1' => t('Stor'),
+    '2' => t('Lille'),
+  );
+  $form['bosa_iframe_form']['bosa_iframe_size'] = array(
+    '#type' => 'radios',
+    '#title' => t('Size'),
+    '#options' => $size,
+    '#required' => TRUE,
+    //'#default_value' => isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 2,
+  );
+  $form['bosa_iframe_form']['bosa_iframe_amount'] = array(
+    '#type' => 'textfield',
+    '#title' => "Antal viste produkter",
+    '#size' => 4,
+    '#required' => TRUE,
+    '#default_value' => isset($values['bosa_iframe_amount']) ? $values['bosa_iframe_amount'] : '4',
+    '#description' => t('Standard er 4'),
+  );
+  $form['bosa_iframe_form']['bosa_iframe_random'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Vis '. t('Random'),
+    '#default_value' => isset($values['bosa_iframe_random']) ? $values['bosa_iframe_random'] : '',
+  );
+
+  $vocabulary = taxonomy_vocabulary_machine_name_load('geografi');
+  $terms = taxonomy_get_tree($vocabulary->vid);
+  $geografi = array();
+  foreach($terms as $term) {
+    $geografi[$term->tid] = $term->name;
+  }
+
+  $vocabulary = taxonomy_vocabulary_machine_name_load('offer_type');
+  $terms = taxonomy_get_tree($vocabulary->vid);
+  $offer_type = array( 0 => '--');
+  foreach($terms as $term) {
+    $offer_type[$term->tid] = $term->name;
+  }
+  $vocabulary = taxonomy_vocabulary_machine_name_load('sale');
+  $terms = taxonomy_get_tree($vocabulary->vid);
+  $sal = array(0 => '--');
+  foreach($terms as $term) {
+    $sal[$term->tid] = $term->name;
+  }
+  $form['bosa_iframe_form']['bosa_iframe_category_1'] = array(
+    '#type' => 'select',
+    '#title' => 'V&#230;lg Kommune',
+    '#options' => $geografi,
+    '#multiple' => TRUE,
+    '#size' => 10,
+    '#default_value' => isset($values['bosa_iframe_category_1']) ? $values['bosa_iframe_category_1'] : NULL,
+  );
+  $form['bosa_iframe_form']['bosa_iframe_category_2'] = array(
+    '#type' => 'select',
+    '#title' => "V&#230;lg Tema",
+    '#options' => $offer_type,
+    '#default_value' => isset($values['bosa_iframe_category_2']) ? $values['bosa_iframe_category_2'] : NULL,
+  );
+  $form['bosa_iframe_form']['bosa_iframe_category_3'] = array(
+    '#type' => 'select',
+    '#title' => 'V&#230;lg M&aring;lgruppe',
+    '#options' => $sal,
+    '#default_value' => isset($values['bosa_iframe_category_3']) ? $values['bosa_iframe_category_3'] : NULL,
+  );
+  $form['bosa_iframe_form']['bosa_iframe_ids'] = array(
+    '#type' => 'textfield',
+    '#title' => "Angiv Produktvisninsnummer ",
+    '#description' =>"F.eks (23,44,24). Du finder produktes nr. ved at at holde musen over 'Rediger' linket på din visning, nummeret er det der står efter /node/",
+    '#default_value' => isset($values['bosa_iframe_ids']) ? $values['bosa_iframe_ids'] : NULL,
+  );
+  $form['bosa_iframe_form']['bosa_iframe_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Generer!'),
+    '#suffix' => '<div class="description">Kopiér nedenstående kode og indsæt den på din egen hjemmeside.</div>',
+  );
+  if($form_state['complete']) {
+    $amount = $values['bosa_iframe_amount'] ? $values['bosa_iframe_amount']  : 4;
+    $ca_geo = $values['bosa_iframe_category_1'] ? $values['bosa_iframe_category_1'] : 'all';
+    $ca_tower = $values['bosa_iframe_category_2'] ? $values['bosa_iframe_category_2'] : 'all';
+    $ca_sal = $values['bosa_iframe_category_3'] ? $values['bosa_iframe_category_3'] : 'all';
+    $ids = $values['bosa_iframe_ids'] ? $values['bosa_iframe_ids'] : '';
+    $size = isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 1;
+    $random = isset($values['bosa_iframe_random']) ? $values['bosa_iframe_random'] : '';
+
+    if ($random) {
+      $type = 'product/r';
+      $category = 'category_new/r';
+    }
+    else {
+      $type = 'product/latest';
+      $category = 'category_new/latest';
+    }
+    global $base_url;
+    // default.
+    if(!is_numeric($ca_geo) && !is_numeric($ca_tower) && !is_numeric($ca_sal) && !$ids) {
+      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $type .'/size'.$size . '/'.$amount.'" width="100%" height="500"></iframe>';
+    }
+    elseif (!$ids && (is_numeric($ca_geo) || is_numeric($ca_tower) || is_numeric($ca_sal))) {
+      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $category .'/size'.$size . '/'.$amount.'/'.$ca_geo.'/'.$ca_tower.'/'.$ca_sal;
+      $html .= '" width="100%" height="500"></iframe>';
+    }
+
+    // overwrite other value.
+    if ($ids != '') {
+      // Amount should be overwrite the ids display, if there are more ids than amount in field bosa_iframe_amount
+      $tmp = explode(',',$ids);
+      // Check ids, if unpublished, choose next ones.
+      if ($tmp_ids = bosa_iframe_check_expirated_date($tmp,$amount)) {
+        $ids = implode($tmp_ids,",");
+        $html='<iframe src="'.$base_url.'/bosa/iframe/product/s/size'.$size . '/' .$ids.'" width="100%" height="500"></iframe>';
+      }
+      else {
+        $html = t("Ingen resultat, de er udloebet eller ingen produkter i produktervisning.");
+      }
+    }
+    $form['bosa_iframe_form']['bosa_iframe_code'] = array(
+      '#title' => t("Iframe kode"),
+      '#description' => 'Kopi&#233;r nedenst&aring;ende kode og inds&#230;t p&aring; din egen hjemmeside.',
+      '#type' => 'textarea',
+      '#value' => $html,
+    );
+    $form['bosa_iframe_form']['bosa_iframe_view'] = array(
+      '#title' => "iframe",
+      '#type' => 'fieldset',
+      '#description' => $html,
+    );
+  }
+  return $form;
+}
+function bosa_iframe_form_all_submit($form, &$form_state) {
+  switch ($form_state['stage']) {
+    case 'get_form':
+      $form_state['multistep_values'][$form_state['stage']] = $form_state['values'];
+        bosa_iframe_form($form, $form_state);
+        $form_state['complete'] = TRUE;
+      break;
+  }
+
+  if (isset($form_state['multistep_values']['form_build_id'])) {
+    $form_state['values']['form_build_id'] = $form_state['multistep_values']['form_build_id'];
+  }
+  $form_state['multistep_values']['form_build_id'] = $form_state['values']['form_build_id'];
+  //$form_state['stage'] = $form_state['new_stage'];
+  $form_state['rebuild'] = TRUE;
+}
+/**
+ * function bosa_iframe_check_expirated_date()
+ * Check the offers expirated date.
+ */
+function bosa_iframe_check_expirated_date($tmp,$amount = 4) {
+  $ids = array();
+  foreach ($tmp as $key => $value) {
+    $node = node_load($value);
+    if ($node->status == 0) {
+      continue;
+    }
+    if (!$product = field_get_items('node', $node, 'field_reference')) {
+      continue;
+    }
+    if($expirated = field_get_items('node', $node, 'field_udl_bsdato')) {
+      if ($expirated[0] < time()) {
+        continue;
+      }
+      else {
+        $ids[] = $value;
+      }
+    }
+    else {
+      $ids[] = $value;
+    }
+  }
+  if(count($ids) >= $amount) {
+    return $ids = array_slice($ids,0,$amount);
+  }
+  elseif (count($ids) > 0 && ($short = $amount - count($ids)) > 0) {
+    // Add the extra ids.
+    $sql = "SELECT * FROM `node`, `field_data_field_udl_bsdato` udl, `field_data_field_reference` ref
+            WHERE node.type = 'offer' AND nid = udl.entity_id AND field_udl_bsdato_value >now()
+            AND status = 1 and ref.entity_id = nid
+            ORDER BY created DESC LIMIT " . $short;
+    $items = db_query($sql)->fetchAll();
+    foreach ($items as $item) {
+      $ids[] = $item->nid;
+    }
+    return $ids;
+  }
+  elseif (count($ids) == 0) {
+    return FALSE;
+  }
+}
 /**
  * Implements hook_page_alter()
  */
@@ -33,21 +242,49 @@ function bosa_iframe_page_alter(&$page) {
  */
 function bosa_iframe_preprocess_page(&$vars, $hook) {
   if (strstr(request_uri(), 'bosa/iframe')) {
-     $vars['theme_hook_suggestion'] = 'page__iframe';
+    $vars['theme_hook_suggestion'] = 'page__iframe';
   }
 }
 
-function bosa_iframe_view($type, $arg, $ids = NULL, $tid = NULL){
-$script = "
+/**
+ * base_iframe_view('product','r','size1', ids = '4'(amount))
+ * base_iframe_view('product','s','size1', ids = '230,298')
+ * base_iframe_view('category_new','latest','size1', ids = '230', $tid_2. $tid_3)
+ * size1 (572x470), size2 (279x228)
+ */
+function bosa_iframe_view($type, $arg, $size, $amount,$ids = NULL, $tid_2 = NULL,$tid_3 = NULL){
+/*$script = "
   var qty = jQuery('.views-row').length;
   var width = 100;
-  if(qty !== 4){
-  	if(qty !== 1){
-      width = 98;
-  	}
-    jQuery('.views-row').css('width', width+'%');
-  }";
-
+  if(qty >= 4 ){
+      width = 24;
+  }
+  if (qty == 2){
+    width = 49;
+  }
+  if (qty == 3){
+    width = 32;
+  }
+  if (qty == 1){
+    width = 98;
+  }
+  jQuery('.views-row').css('width', width+'%');
+  ";*/
+  $script = "";
+  if($size == 'size1') {
+    $width = '572px';
+    $height = '470px';
+  }else {
+    $width = '279px';
+    $height = '228px';
+    $script = "jQuery('.views-field.views-field-field-subtitle').css({'display': 'none', 'visibility' : 'hidden'});";
+  }
+  $script .= "
+  var width = '". $width ."';
+  var height = '". $height ."';
+  jQuery('.views-row').css({'width': width, 'height' : height});
+  jQuery('.views-field-field-offer-images img').css({'width': '100%', 'height' : 'auto'});
+  ";
   drupal_add_js($script, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
   switch($type){
     // Product view
@@ -56,11 +293,16 @@ $script = "
       $v = views_get_view('Produktvisning_paa_kategoriside');
       switch($arg){
         case 's':
-          return $v->preview('panel_pane_2', array($ids));
-        
+          return $v->preview('panel_pane_2', array($amount));
+        case 'r':
+          $v->set_items_per_page($amount);
+          return $v->preview('panel_pane_2', array('all', $tid_2));
+        case 'latest':
+          $v->set_items_per_page($amount);
+          return $v->preview('panel_pane_3', array('all', $tid_2));
         default:
-          $v->set_items_per_page($ids);
-          return $v->preview('panel_pane_2', array('all', $tid));
+          $v->set_items_per_page($amount);
+          return $v->preview('panel_pane_2', array('all', $tid_2));
       }
       break;
 
@@ -76,8 +318,26 @@ $script = "
         $i++;
       }
       return $views;
-        
+      break;
 
+    case 'category_new':
+        $v = views_get_view('Produktvisning_paa_kategoriside');
+        $v->set_items_per_page($amount);
+        switch($arg){
+          case "r":
+            $v->set_items_per_page($amount);
+            return $v->preview('panel_pane_4', array($ids,$tid_2,$tid_3));
+            break;
+          case "latest":
+            $v->set_items_per_page($amount);
+            return $v->preview('panel_pane_5', array($ids,$tid_2,$tid_3));
+            break;
+
+          default:
+            return $v->preview('panel_pane_4', array($ids,$tid_2,$tid_3));
+            break;
+        }
+        break;
     default:
       return 'Incorrect arguments';
       break;
