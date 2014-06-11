@@ -120,6 +120,7 @@ function bosa_iframe_form($form, &$form_state){
     $size = isset($values['bosa_iframe_size']) ? $values['bosa_iframe_size'] : 1;
     $random = isset($values['bosa_iframe_random']) ? $values['bosa_iframe_random'] : '';
 
+    $ca_geo = implode(',', $ca_geo);
     if ($random) {
       $type = 'product/r';
       $category = 'category_new/r';
@@ -129,13 +130,18 @@ function bosa_iframe_form($form, &$form_state){
       $category = 'category_new/latest';
     }
     global $base_url;
+
+    $height = "228px";
+    if($size == "1") {
+      $height = "470px";
+    }
     // default.
     if(!is_numeric($ca_geo) && !is_numeric($ca_tower) && !is_numeric($ca_sal) && !$ids) {
-      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $type .'/size'.$size . '/'.$amount.'" width="100%" height="500"></iframe>';
+      $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $type .'/size'.$size . '/'.$amount.'" frameborder="0" scrolling="no" width="100%" height="' .$height .'"></iframe>';
     }
     elseif (!$ids && (is_numeric($ca_geo) || is_numeric($ca_tower) || is_numeric($ca_sal))) {
       $html = '<iframe src="'.$base_url.'/bosa/iframe/' . $category .'/size'.$size . '/'.$amount.'/'.$ca_geo.'/'.$ca_tower.'/'.$ca_sal;
-      $html .= '" width="100%" height="500"></iframe>';
+      $html .= '" frameborder="0" scrolling="no" width="100%" height="'.$height.'"></iframe>';
     }
 
     // overwrite other value.
@@ -145,7 +151,7 @@ function bosa_iframe_form($form, &$form_state){
       // Check ids, if unpublished, choose next ones.
       if ($tmp_ids = bosa_iframe_check_expirated_date($tmp,$amount)) {
         $ids = implode($tmp_ids,",");
-        $html='<iframe src="'.$base_url.'/bosa/iframe/product/s/size'.$size . '/' .$ids.'" width="100%" height="500"></iframe>';
+        $html='<iframe src="'.$base_url.'/bosa/iframe/product/s/size'.$size . '/' .$ids.'" frameborder="0" scrolling="no" width="100%" height="'. $height .'"></iframe>';
       }
       else {
         $html = t("Ingen resultat, de er udloebet eller ingen produkter i produktervisning.");
@@ -274,15 +280,35 @@ function bosa_iframe_view($type, $arg, $size, $amount,$ids = NULL, $tid_2 = NULL
   if($size == 'size1') {
     $width = '572px';
     $height = '470px';
-  }else {
+  }elseif($size == 'size2') {
     $width = '279px';
     $height = '228px';
     $script = "jQuery('.views-field.views-field-field-subtitle').css({'display': 'none', 'visibility' : 'hidden'});";
   }
+  else {
+  $script = "
+  var qty = jQuery('.views-row').length;
+  var width = 100;
+  if(qty >= 4 ){
+      width = 24;
+  }
+  if (qty == 2){
+    width = 49;
+  }
+  if (qty == 3){
+    width = 32;
+  }
+  if (qty == 1){
+    width = 98;
+  }
+  jQuery('.views-row').css('width', width+'%');
+  ";
+  }
+
   $script .= "
   var width = '". $width ."';
   var height = '". $height ."';
-  jQuery('.views-row').css({'width': width, 'height' : height});
+  jQuery('.views-row').css({'width': width, 'height' : height, 'margin-top' : '0px'});
   jQuery('.views-field-field-offer-images img').css({'width': '100%', 'height' : 'auto'});
   ";
   drupal_add_js($script, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
