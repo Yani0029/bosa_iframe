@@ -198,9 +198,9 @@ function bosa_iframe_check_expirated_date($tmp,$amount = 4) {
     if ($node->status == 0) {
       continue;
     }
-    if (!$product = field_get_items('node', $node, 'field_reference')) {
+    /*if (!$product = field_get_items('node', $node, 'field_reference')) {
       continue;
-    }
+    }*/
     if($expirated = field_get_items('node', $node, 'field_udl_bsdato')) {
       if ($expirated[0] < time()) {
         continue;
